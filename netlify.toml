@@ -1,0 +1,5 @@
+[build]
+  command = "pnpm vite build"
+  publish = "dist/public"
+
+
