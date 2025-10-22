@@ -1,0 +1,21 @@
+{
+  "query": "SELECT * FROM certificates ORDER BY createdAt DESC LIMIT 1",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 84zmJtjJSnCgEGF.14fdf740061e --database 4gdWMZek2CdBcdwpRUNmNJ --execute SELECT * FROM certificates ORDER BY createdAt DESC LIMIT 1",
+  "rows": [
+    {
+      "id": "5df479d8-5988-44e7-8a4b-7bfee2c9f0a5",
+      "userId": "oTuPzQALP43fDUsRLnWxgx",
+      "certificateName": "COMERCIAL CARLITO MATERIAL DE CONSTRUCAO LTDA",
+      "certificateKey": "certificates/oTuPzQALP43fDUsRLnWxgx/5df479d8-5988-44e7-8a4b-7bfee2c9f0a5.pfx",
+      "certificateUrl": "https://forge.manus.ai/v1/storage/download/NKRZ3LXxnwDDs9oGtFgYQ5",
+      "certificatePassword": "1234",
+      "cnpj": "NULL",
+      "createdAt": "2025-10-21 12:23:40",
+      "updatedAt": "2025-10-21 12:23:40"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tuserId\tcertificateName\tcertificateKey\tcertificateUrl\tcertificatePassword\tcnpj\tcreatedAt\tupdatedAt\n5df479d8-5988-44e7-8a4b-7bfee2c9f0a5\toTuPzQALP43fDUsRLnWxgx\tCOMERCIAL CARLITO MATERIAL DE CONSTRUCAO LTDA\tcertificates/oTuPzQALP43fDUsRLnWxgx/5df479d8-5988-44e7-8a4b-7bfee2c9f0a5.pfx\thttps://forge.manus.ai/v1/storage/download/NKRZ3LXxnwDDs9oGtFgYQ5\t1234\tNULL\t2025-10-21 12:23:40\t2025-10-21 12:23:40\n",
+  "stderr": "",
+  "execution_time_ms": 49
+}

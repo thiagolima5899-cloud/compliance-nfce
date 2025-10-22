@@ -1,0 +1,361 @@
+import { useAuth } from "@/_core/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { Download, AlertCircle, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { useLocation } from "wouter";
+
+export default function DownloadPage() {
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] = useState<string>("");
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+
+  const utils = trpc.useUtils();
+  const { data: certificates } = trpc.certificates.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const { data: csvUploads } = trpc.csvUploads.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+
+  const uploadCsvMutation = trpc.csvUploads.create.useMutation({
+    onSuccess: () => {
+      setCsvFile(null);
+      utils.csvUploads.list.invalidate();
+    },
+  });
+
+  const startSessionMutation = trpc.downloads.startSession.useMutation({
+    onSuccess: (session) => {
+      navigate(`/download-progress/${session.id}`);
+    },
+    onError: (error) => {
+      console.error("Erro ao iniciar download:", error);
+      alert("Erro ao iniciar download: " + (error.message || "Erro desconhecido"));
+    },
+  });
+
+  if (!isAuthenticated) {
+    navigate("/");
+    return null;
+  }
+
+  const handleCsvUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!csvFile) {
+      alert("Por favor, selecione um arquivo CSV");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = (event.target?.result as string).split(",")[1];
+      try {
+        await uploadCsvMutation.mutateAsync({
+          fileName: csvFile.name,
+          csvData: base64,
+        });
+        setIsOpen(false);
+      } catch (error) {
+        alert("Erro ao fazer upload do CSV");
+        console.error(error);
+      }
+    };
+    reader.readAsDataURL(csvFile);
+  };
+
+  const handleStartDownload = () => {
+    console.log("handleStartDownload called", { selectedCertificate, csvUploads });
+    
+    if (!selectedCertificate) {
+      alert("Por favor, selecione um certificado");
+      return;
+    }
+
+    if (!csvUploads || csvUploads.length === 0) {
+      alert("Por favor, faça upload de um arquivo CSV");
+      return;
+    }
+
+    const selectedCsv = csvUploads[0];
+
+    console.log("Starting download session with:", {
+      csvUploadId: selectedCsv.id,
+      certificateId: selectedCertificate,
+    });
+
+    startSessionMutation.mutate({
+      csvUploadId: selectedCsv.id,
+      certificateId: selectedCertificate,
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Download de NFC-e</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/")}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar
+          </Button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
+        {/* Alert */}
+        <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <p className="font-semibold mb-1">Como usar:</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Faça upload de um arquivo CSV com as chaves de acesso</li>
+              <li>Selecione o certificado digital a ser utilizado</li>
+              <li>Clique em "Iniciar Download" para começar o processo</li>
+            </ol>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Upload and Selection */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* CSV Upload Card */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Arquivo CSV
+              </h2>
+
+              {csvUploads && csvUploads.length > 0 ? (
+                <div className="space-y-4">
+                  {csvUploads.map((upload) => (
+                    <div
+                      key={upload.id}
+                      className="border rounded-lg p-4 bg-gray-50"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {upload.fileName}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {upload.totalKeys} chaves
+                          </p>
+                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          Pronto
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Enviado em{" "}
+                        {upload.createdAt ? new Date(upload.createdAt).toLocaleDateString("pt-BR") : "N/A"}
+                      </p>
+                    </div>
+                  ))}
+
+                  <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        Fazer Upload de Novo CSV
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Fazer Upload de CSV</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleCsvUpload} className="space-y-4">
+                        <div>
+                          <Label htmlFor="csv">
+                            Arquivo CSV com chaves de acesso
+                          </Label>
+                          <Input
+                            id="csv"
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) =>
+                              setCsvFile(e.target.files?.[0] || null)
+                            }
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-2">
+                            O arquivo deve conter uma coluna com as chaves de
+                            acesso (44 dígitos)
+                          </p>
+                        </div>
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={uploadCsvMutation.isPending}
+                        >
+                          {uploadCsvMutation.isPending
+                            ? "Enviando..."
+                            : "Fazer Upload"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">
+                    Nenhum arquivo CSV enviado
+                  </p>
+                  <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Download className="w-4 h-4 mr-2" />
+                        Fazer Upload de CSV
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Fazer Upload de CSV</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleCsvUpload} className="space-y-4">
+                        <div>
+                          <Label htmlFor="csv">
+                            Arquivo CSV com chaves de acesso
+                          </Label>
+                          <Input
+                            id="csv"
+                            type="file"
+                            accept=".csv"
+                            onChange={(e) =>
+                              setCsvFile(e.target.files?.[0] || null)
+                            }
+                            required
+                          />
+                          <p className="text-xs text-gray-500 mt-2">
+                            O arquivo deve conter uma coluna com as chaves de
+                            acesso (44 dígitos)
+                          </p>
+                        </div>
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={uploadCsvMutation.isPending}
+                        >
+                          {uploadCsvMutation.isPending
+                            ? "Enviando..."
+                            : "Fazer Upload"}
+                        </Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
+            </Card>
+
+            {/* Certificate Selection Card */}
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Certificado Digital
+              </h2>
+
+              {certificates && certificates.length > 0 ? (
+                <div className="space-y-4">
+                  <Select value={selectedCertificate} onValueChange={setSelectedCertificate}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um certificado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {certificates.map((cert) => (
+                        <SelectItem key={cert.id} value={cert.id}>
+                          {cert.certificateName}
+                          {cert.cnpj && ` (${cert.cnpj})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">
+                    Nenhum certificado cadastrado
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate("/certificates")}
+                  >
+                    Ir para Certificados
+                  </Button>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Right Column - Summary and Download Button */}
+          <div>
+            <Card className="p-6 sticky top-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Resumo
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500">Arquivo CSV</p>
+                  <p className="font-medium text-gray-900">
+                    {csvUploads && csvUploads.length > 0
+                      ? csvUploads[0].fileName
+                      : "Não selecionado"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500">Certificado</p>
+                  <p className="font-medium text-gray-900">
+                    {selectedCertificate && certificates
+                      ? certificates.find((c) => c.id === selectedCertificate)
+                          ?.certificateName
+                      : "Não selecionado"}
+                  </p>
+                </div>
+
+                {csvUploads && csvUploads.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-500">Total de chaves</p>
+                    <p className="font-medium text-gray-900">
+                      {csvUploads[0].totalKeys}
+                    </p>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full mt-6"
+                  size="lg"
+                  disabled={
+                    !selectedCertificate ||
+                    !csvUploads ||
+                    csvUploads.length === 0 ||
+                    startSessionMutation.isPending
+                  }
+                  onClick={handleStartDownload}
+                >
+                  {startSessionMutation.isPending
+                    ? "Iniciando..."
+                    : "Iniciar Download"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+

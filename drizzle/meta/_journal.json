@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1761048807145,
+      "tag": "0000_yielding_the_hood",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1761049353385,
+      "tag": "0001_lumpy_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1761094286148,
+      "tag": "0002_free_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1761099184106,
+      "tag": "0003_pretty_jackal",
+      "breakpoints": true
+    }
+  ]
+}
