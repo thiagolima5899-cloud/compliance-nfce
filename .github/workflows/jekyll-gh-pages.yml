@@ -22,8 +22,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Build job
+  # Build job (disabled)
   build:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,8 +39,9 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
 
-  # Deployment job
+  # Deployment job (disabled)
   deploy:
+    if: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
