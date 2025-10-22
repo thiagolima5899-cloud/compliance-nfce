@@ -24,6 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
@@ -42,7 +45,11 @@ jobs:
         run: pnpm vite build --base=/${{ env.REPO_NAME }}/
 
       - name: Create SPA 404.html
-        run: cp dist/public/index.html dist/public/404.html
+        run: |
+          ls -la
+          ls -la dist || true
+          ls -la dist/public || true
+          cp dist/public/index.html dist/public/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
